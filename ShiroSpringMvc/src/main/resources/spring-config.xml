@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:context="http://www.springframework.org/schema/context" xmlns:tx="http://www.springframework.org/schema/tx"
+       xmlns:aop="http://www.springframework.org/schema/aop"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans
+       http://www.springframework.org/schema/beans/spring-beans.xsd
+       http://www.springframework.org/schema/context
+       http://www.springframework.org/schema/context/spring-context.xsd http://www.springframework.org/schema/tx http://www.springframework.org/schema/tx/spring-tx.xsd http://www.springframework.org/schema/aop http://www.springframework.org/schema/aop/spring-aop.xsd">
+
+    <!--<bean id="iniRealm" class="org.apache.shiro.realm.text.IniRealm">
+        <constructor-arg name="resourcePath" value="classpath:shiro.ini"/>
+    </bean>-->
+    <!-- 扫描的文件 -->
+    <context:property-placeholder location="classpath:pro.properties"
+                                  ignore-unresolvable="true"/>
+    <!--配置数据源-->
+    <bean id="dataSource" class="org.springframework.jdbc.datasource.DriverManagerDataSource">
+        <property name="driverClassName" value="${jdbc.driver}"/>
+        <property name="url" value="${jdbc.url}"/>
+        <property name="username" value="${jdbc.username}"/>
+        <property name="password" value="${jdbc.password}"/>
+    </bean>
+
+    <!--配置sqlSessionFactry-->
+    <bean id="sqlSessionFactory" class="org.mybatis.spring.SqlSessionFactoryBean">
+        <property name="dataSource" ref="dataSource"/>
+        <property name="typeAliasesPackage" value="com.shiro.test.pojo"/>
+        <property name="mapperLocations" value="classpath:com/shiro/test/mapper/*.xml"/>
+    </bean>
+    <!--事务-->
+    <!--<bean id="txManager" class="org.springframework.jdbc.datasource.DataSourceTransactionManager">
+         <property name="dataSource" ref="dataSource"/>
+    </bean>-->
+    <!--定义事务增强-->
+    <!--<tx:advice id="txAdivce" transaction-manager="txManager">
+        <tx:attributes>
+            <tx:method name="add*"
+                       isolation="REPEATABLE_READ" rollback-for="Exception"/>
+            <tx:method name="update*"
+                       isolation="REPEATABLE_READ" rollback-for="Exception"/>
+            <tx:method name="delete*"
+                       isolation="REPEATABLE_READ" rollback-for="Exception"/>
+            <tx:method name="get*"
+                       isolation="REPEATABLE_READ" read-only="true"/>
+            <tx:method name="*"
+                       isolation="REPEATABLE_READ" propagation="NOT_SUPPORTED"/>
+        </tx:attributes>
+    </tx:advice>-->
+
+    <!--定义事务切面切入点-->
+    <!--<aop:config>
+        <aop:pointcut id="point"
+                      expression="execution(* com.shiro.test.service..*(..))"/>
+        <aop:advisor advice-ref="txAdivce" pointcut-ref="point"/>
+    </aop:config>-->
+
+    <bean class="org.mybatis.spring.mapper.MapperScannerConfigurer">
+        <property name="basePackage" value="com.shiro.test.mapper"/>
+    </bean>
+
+    <!--注入自定义的Realm-->
+    <bean id="myRealm" class="com.shiro.test.filter.MyRealm"/>
+    <bean id="securityManager" class="org.apache.shiro.web.mgt.DefaultWebSecurityManager">
+        <!--<property name="realm" ref="iniRealm"></property>-->
+        <property name="realm" ref="myRealm"/>
+    </bean>
+
+    <bean class="org.apache.shiro.spring.security.interceptor.AuthorizationAttributeSourceAdvisor">
+        <property name="securityManager" ref="securityManager"/>
+    </bean>
+
+    <bean id="shiroFilter" class="com.shiro.test.filter.MyShiroFilterFactoryBean">
+        <property name="securityManager" ref="securityManager"/>
+        <property name="loginUrl" value="/gologin.html"/>
+        <!-- 指定登陆成功后进入哪个页面-->
+        <property name="successUrl" value="/index.html"/>
+        <property name="unauthorizedUrl" value="/error.html"/>
+        <property name="filterChainDefinitions">
+            <value>
+                /login.html=anon
+                /gologin.html=anon
+                /index.html=authc
+                /role.html=authc,roles[admin]
+                /menu/**=authc,roles[admin,test]
+            </value>
+        </property>
+        <property name="filters">
+            <map>
+                <entry key="roles">
+                    <bean class="com.shiro.test.filter.MyShiroFilter"></bean>
+                </entry>
+            </map>
+        </property>
+    </bean>
+</beans>
